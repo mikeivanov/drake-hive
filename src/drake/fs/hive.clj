@@ -48,29 +48,30 @@
     (doall (for [_ (range) :while (.next tables)]
              (.getString tables 3)))))
 
-(defn table-exists? [ds db table]
-  (boolean (first (list-tables ds db table))))
+(defn table-exists? [path]
+  (let [{ds :datasource db :database table :table} (hive-path path)]
+    (boolean (first (list-tables ds db table)))))
 
 (defn table-info [path]
-  (let [{ds :datasource db :database table :table} (hive-path path)]
-    (when (table-exists? ds db table)
-      (let [sql (format "describe extended %s.%s" db table)
-            [_ meta] (->> (jdbc/query ds [sql] :as-arrays? true)
-                          (rest)
-                          (filter #(= "Detailed Table Information" (first %)))
-                          (first))
-            [_ mtime] (re-find #"transient_lastDdlTime=(\d+)\b" meta)
-            [_ numrw] (re-find #"numRows=(\d+)\b" meta)]
-        {:mod-time (* 1000 (Long/parseLong mtime))
-         :num-rows (Long/parseLong numrw)
-         :path path
-         :directory false}))))
+  (when (table-exists? path)
+    (let [{ds :datasource db :database table :table} (hive-path path)
+          sql (format "describe extended %s.%s" db table)
+          [_ meta] (->> (jdbc/query ds [sql] :as-arrays? true)
+                        (rest)
+                        (filter #(= "Detailed Table Information" (first %)))
+                        (first))
+          [_ ctime] (re-find #"createTime:(\d+)\b" meta)
+          [_ mtime] (re-find #"transient_lastDdlTime=(\d+)\b" meta)
+          [_ numrw] (re-find #"numRows=(\d+)\b" meta)]
+      {:mod-time (* 1000 (Long/parseLong (or mtime ctime)))
+       :num-rows (and numrw (Long/parseLong numrw))
+       :path path
+       :directory false})))
 
 (defn hive []
   (reify FileSystem
     (exists? [_ path]
-      (let [{ds :datasource db :database table :table} (hive-path path)]
-        (table-exists? ds db table)))
+      (table-exists? path))
     (directory? [_ path]
       false)
     (mod-time [_ path]
@@ -82,7 +83,7 @@
     (file-info-seq [_ path]
       [(table-info path)])
     (data-in? [_ path]
-      (pos? (or (:num-rows (table-info path)) 0)))
+      (table-exists? path))
     (normalized-filename [_ path]
       (:path (hive-path path)))
     (rm [_ _]

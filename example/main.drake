@@ -1,0 +1,6 @@
+!hive:/default/foobar <- !hive:/default/sample_07
+  hive -e "create table if not exists foobar like sample_07;
+           insert overwrite table foobar select * from sample_07;"
+
+dump <- !hive:/default/foobar
+  hive -e "select * from foobar" > $[OUTPUT]

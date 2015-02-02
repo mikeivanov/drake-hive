@@ -49,14 +49,14 @@
              (.getString tables 3)))))
 
 (defn table-exists? [path]
-  (let [{ds :datasource db :database table :table} (hive-path path)]
-    (boolean (first (list-tables ds db table)))))
+  (let [{:keys [datasource database table]} (hive-path path)]
+    (boolean (first (list-tables datasource database table)))))
 
 (defn table-info [path]
   (when (table-exists? path)
-    (let [{ds :datasource db :database table :table} (hive-path path)
-          sql (format "describe extended %s.%s" db table)
-          [_ meta] (->> (jdbc/query ds [sql] :as-arrays? true)
+    (let [{:keys [datasource database table]} (hive-path path)
+          sql (format "describe extended %s.%s" database table)
+          [_ meta] (->> (jdbc/query datasource [sql] :as-arrays? true)
                         (rest)
                         (filter #(= "Detailed Table Information" (first %)))
                         (first))

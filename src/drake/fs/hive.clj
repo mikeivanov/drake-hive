@@ -1,6 +1,7 @@
 (ns drake.fs.hive
   (:require [drake-interface.core :refer [FileSystem]]
             [drake.fs :refer [remove-extra-slashes]]
+            [slingshot.slingshot :refer [throw+]]
             [clojure.string :as s]
             [clojure.java.jdbc :as jdbc])
   (:import [java.net URI]))
@@ -87,6 +88,6 @@
     (normalized-filename [_ path]
       (:path (hive-path path)))
     (rm [_ _]
-      (throw (Exception. (str "rm is not implemented on hive filesystem"))))
+      (throw+ {:msg "rm is not implemented on hive filesystem"}))
     (mv [_ _ _]
-      (throw (Exception. (str "mv is not implemented on hive filesystem"))))))
+      (throw+ {:msg "mv is not implemented on hive filesystem"}))))

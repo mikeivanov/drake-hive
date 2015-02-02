@@ -1,6 +1,16 @@
 !hive:/default/foobar <- !hive:/default/sample_07
-  hive -e "create table if not exists foobar like sample_07;
-           insert overwrite table foobar select * from sample_07;"
+  hive -e "CREATE TABLE IF NOT EXISTS foobar LIKE sample_07;
+           INSERT OVERWRITE TABLE foobar SELECT * FROM sample_07;"
 
 dump.tsv <- !hive:/default/foobar
-  hive -e "select * from foobar" > $[OUTPUT]
+  hive -e "SELECT * FROM foobar" > $[OUTPUT]
+
+!hive:/default/foobar1 <- !hive:/default/sample_07 [hive]
+  CREATE TABLE IF NOT EXISTS ${env:TABLEOUT} LIKE ${env:TABLEIN};
+  INSERT OVERWRITE TABLE ${env:TABLEOUT} SELECT * FROM ${env:TABLEIN};
+
+count.dat <- !hive:/default/foobar1 [hive output:capture]
+  SELECT COUNT(1) FROM ${env:TABLEIN};
+
+repaired <- !hive:/default/foobar1 [hive output:touch]
+  MSCK REPAIR TABLE `${env:TABLEIN}`;

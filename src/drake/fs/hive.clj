@@ -6,17 +6,17 @@
             [clojure.java.jdbc :as jdbc])
   (:import [java.net URI]))
 
-(defn datasource [host port & [user password]]
+(defn datasource [& {:keys [user password host port]}]
   (let [user (or user
                  (get (System/getenv) "DRAKE_HIVE_USER")
                  (get (System/getenv) "USER")
                  "hive")
-        password (or password
-                     (get (System/getenv) "DRAKE_HIVE_PASSWORD")
-                     "")]
+        password (or password (get (System/getenv) "DRAKE_HIVE_PASSWORD") "")
+        host (or host (get (System/getenv) "DRAKE_HIVE_HOST" "127.0.0.1"))
+        port (or port (get (System/getenv) "DRAKE_HIVE_PORT" "10000"))]
     {:classname "org.apache.hive.jdbc.HiveDriver"
      :subprotocol "hive2"
-     :subname (format "//%s:%d" host port)
+     :subname (format "//%s:%s" host port)
      :user user
      :password password}))
 
@@ -28,14 +28,14 @@
         [_ database table] (-> (or (.getPath uri) "")
                                (remove-extra-slashes)
                                (s/split #"/"))]
-    (cond (not database) (throw (Exception. (str "malformed hive uri (missing database): " path)))
-          (not table) (throw (Exception. (str "malformed hive uri (missing table): " path)))
-          :else {:path (format "hive://%s:%d/%s/%s" host port database table)
-                 :host host
-                 :port port
-                 :database database
-                 :table table
-                 :datasource (datasource host port)})))
+    (when-not database
+      (throw+ {:msg (str "malformed hive uri (missing database): " path)}))
+    (when-not table
+      (throw+ {:msg (str "malformed hive uri (missing table): " path)}))
+    {:normalized (format "/%s/%s" database table)
+     :database database
+     :table table
+     :datasource (datasource :host host :port port)}))
 
 (defn query [ds sql & args]
   (rest (jdbc/query ds (cons sql args) :as-arrays? true)))

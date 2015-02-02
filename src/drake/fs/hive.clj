@@ -41,8 +41,7 @@
   (rest (jdbc/query ds (cons sql args) :as-arrays? true)))
 
 (defn list-tables [ds database & [table]]
-  (let [database (or database "default")
-        table (or table "%")
+  (let [table (or table "%")
         connection (jdbc/get-connection ds)
         metadata (.getMetaData connection)
         tables (.getTables metadata nil database table nil)]

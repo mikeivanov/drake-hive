@@ -65,7 +65,6 @@
           [_ numrw] (re-find #"numRows=(\d+)\b" meta)]
       {:mod-time (* 1000 (Long/parseLong (or mtime ctime)))
        :num-rows (and numrw (Long/parseLong numrw))
-       :path path
        :directory false})))
 
 (defn hive []
@@ -85,7 +84,7 @@
     (data-in? [_ path]
       (table-exists? path))
     (normalized-filename [_ path]
-      (:path (hive-path path)))
+      (:normalized (hive-path path)))
     (rm [_ _]
       (throw+ {:msg "rm is not implemented on hive filesystem"}))
     (mv [_ _ _]

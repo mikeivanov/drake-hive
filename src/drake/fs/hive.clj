@@ -81,6 +81,8 @@
 (defn table-info [table-path]
   (when (table-exists? table-path)
     (let [{:keys [datasource database table normalized]} (hive-path table-path)
+          ;; note: it has to be "describe formatted" because
+          ;; "describe extended" omits the "transient_lastDdlTime" field.
           sql (format "describe formatted %s.%s" database table)
           meta (jdbc/query datasource [sql])
           [ctime mtime] (parse-metadata meta)]

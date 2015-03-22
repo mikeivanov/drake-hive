@@ -4,7 +4,9 @@
             [slingshot.slingshot :refer [throw+]]
             [clojure.string :as s]
             [clojure.java.jdbc :as jdbc])
-  (:import [java.net URI]))
+  (:import [java.net URI]
+           [java.util Date]
+           [java.text SimpleDateFormat]))
 
 (def ^:dynamic getenv (fn [] (System/getenv)))
 
@@ -54,19 +56,36 @@
   (let [{:keys [datasource database table]} (hive-path path)]
     (boolean (first (list-tables datasource database table)))))
 
-(defn table-info [path]
-  (when (table-exists? path)
-    (let [{:keys [datasource database table]} (hive-path path)
-          sql (format "describe extended %s.%s" database table)
-          [_ meta] (->> (jdbc/query datasource [sql] :as-arrays? true)
-                        (rest)
-                        (filter #(= "Detailed Table Information" (first %)))
-                        (first))
-          [_ ctime] (re-find #"createTime:(\d+)\b" meta)
-          [_ mtime] (re-find #"transient_lastDdlTime=(\d+)\b" meta)
-          [_ numrw] (re-find #"numRows=(\d+)\b" meta)]
-      {:mod-time (* 1000 (Long/parseLong (or mtime ctime)))
-       :num-rows (and numrw (Long/parseLong numrw))
+(defn parse-timestamp [v]
+  (let [fmt (SimpleDateFormat. "EEE MMM d HH:mm:ss zzz yyyy")]
+    (.getTime (.parse fmt v))))
+
+(defn trim [s]
+  (when s (s/trim s)))
+
+(defn parse-metadata [meta]
+  (loop [meta meta ctime nil mtime nil]
+    (if-let [m (first meta)]
+      ;; Hive, oh Hive...
+      (let [name  (trim (:col_name m))
+            type  (trim (:data_type m))
+            comm  (trim (:comment m))
+            ctime (if (and (= name "CreateTime:") type)
+                    (parse-timestamp type) ; <- not a bug!
+                    ctime)
+            mtime (if (and (= type "transient_lastDdlTime") comm) ; <- not a bug!
+                    (* 1000 (Long/parseLong comm)))] ; <- not a bug!
+        (recur (rest meta) ctime mtime))
+      [ctime mtime])))
+
+(defn table-info [table-path]
+  (when (table-exists? table-path)
+    (let [{:keys [datasource database table normalized]} (hive-path table-path)
+          sql (format "describe formatted %s.%s" database table)
+          meta (jdbc/query datasource [sql])
+          [ctime mtime] (parse-metadata meta)]
+      {:mod-time (or mtime ctime)
+       :path normalized
        :directory false})))
 
 (defn hive []

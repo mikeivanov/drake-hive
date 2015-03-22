@@ -22,10 +22,21 @@
 
 (use-fixtures :once hive-sandbox-fixture)
 
-(deftest test-hive-fs
+(deftest test-normalized-path
   (cmd "hive" "-e" "use hive_drake_test; create table foo (bar int)")
   (is (= "hive://127.0.0.1:10000/hive_drake_test/foo"
          (fs/normalized-path "hive:/hive_drake_test/foo")))
   (is (= "hive://localhost:10000/hive_drake_test/foo"
-         (fs/normalized-path "hive://localhost:10000/hive_drake_test/foo")))
-  (is (fs/fs di/exists? "hive:/hive_drake_test/foo")))
+         (fs/normalized-path "hive://localhost:10000/hive_drake_test/foo"))))
+
+(deftest test-exists
+  (cmd "hive" "-e" "use hive_drake_test; create table foo1 (bar int)")
+  (is (fs/fs di/exists? "hive:/hive_drake_test/foo1")))
+
+(deftest test-file-info
+  (cmd "hive" "-e" "use hive_drake_test; create table foo2 (bar int)")
+  (let [info (fs/fs di/file-info "hive:/hive_drake_test/foo2")
+        then (:mod-time info)
+        now  (.getTime (java.util.Date.))
+        diff (Math/abs (- now then))]
+    (is (< diff 10000))))

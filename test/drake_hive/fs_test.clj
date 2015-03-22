@@ -23,9 +23,17 @@
       (is (= "envuser" (:user (:datasource path))))
       (is (= "envpassword" (:password (:datasource path)))))))
 
-(deftest test-hive-path-defaults
-  (let [path (h/hive-path "hive:/database/table")]
-    (is (= "database" (:database path)))
-    (is (= "table" (:table path)))
-    (is (= "//127.0.0.1:10000/database/table" (:normalized path)))
-    (is (= "//127.0.0.1:10000" (:subname (:datasource path))))))
+(deftest test-hive-parse-metadata
+  (let [meta [{:comment nil
+               :data_type "Tue Apr 22 07:21:31 PDT 2014"
+               :col_name "CreateTime:         "}
+              {:comment nil
+               :data_type "MANAGED_TABLE       "
+               :col_name "Table Type:         "}
+              {:comment "1398176493          "
+               :data_type "transient_lastDdlTime"
+               :col_name ""}]]
+    (let [[ctime mtime] (h/parse-metadata meta)]
+      (is (= 1398176491000 ctime))
+      (is (= 1398176493000 mtime)))))
+

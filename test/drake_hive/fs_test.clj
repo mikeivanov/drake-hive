@@ -25,6 +25,9 @@
 
 (deftest test-hive-parse-metadata
   (let [meta [{:comment nil
+               :col_name "Database:"
+               :data_type "default"}
+              {:comment nil
                :data_type "Tue Apr 22 07:21:31 PDT 2014"
                :col_name "CreateTime:         "}
               {:comment nil
@@ -32,7 +35,11 @@
                :col_name "Table Type:         "}
               {:comment "1398176493          "
                :data_type "transient_lastDdlTime"
-               :col_name ""}]]
+               :col_name ""}
+              {:comment nil
+               :data_type "No"
+               :col_name "Compressed:"}
+              ]]
     (let [[ctime mtime] (h/parse-metadata meta)]
       (is (= 1398176491000 ctime))
       (is (= 1398176493000 mtime)))))

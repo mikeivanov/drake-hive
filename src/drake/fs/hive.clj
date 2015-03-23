@@ -74,7 +74,8 @@
                     (parse-timestamp type) ; <- not a bug!
                     ctime)
             mtime (if (and (= type "transient_lastDdlTime") comm) ; <- not a bug!
-                    (* 1000 (Long/parseLong comm)))] ; <- not a bug!
+                    (* 1000 (Long/parseLong comm)) ; <- not a bug!
+                    mtime)]
         (recur (rest meta) ctime mtime))
       [ctime mtime])))
 

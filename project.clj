@@ -1,4 +1,4 @@
-(defproject mikeivanov/drake-hive "0.2.0"
+(defproject mikeivanov/drake-hive "0.2.1"
   :description "A Hive plugin for Drake."
   :url "https://github.com/mikeivanov/drake-hive"
   :license {:name "Eclipse Public License"

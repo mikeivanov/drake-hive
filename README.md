@@ -21,6 +21,3 @@ A Hive plugin for [Drake](https://github.com/Factual/drake).
 1. Put example/plugins.edn alongside with your Drakefile.
 2. Run Drake: `drake --plugins=plugins.edn ...`
 
-## TODO
-
-Write tests, maybe?

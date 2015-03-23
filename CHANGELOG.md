@@ -1,4 +1,4 @@
-### 0.2.1-SNAPSHOT
+### 0.2.1
 * Added tests
 * Bugfix: even when specified, the effective hive host and port are always 127.0.0.1:10000
 * Bugfix: incorrect table modification time

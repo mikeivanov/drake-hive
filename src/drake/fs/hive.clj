@@ -53,48 +53,29 @@
              (.getString tables 3)))))
 
 (defn table-exists? [path]
-  (let [{:keys [datasource database table]} (hive-path path)]
+  (let [{:keys [datasource database table]} path]
     (boolean (first (list-tables datasource database table)))))
 
-(defn parse-timestamp [v]
-  (let [fmt (SimpleDateFormat. "EEE MMM d HH:mm:ss zzz yyyy")]
-    (.getTime (.parse fmt v))))
-
-(defn trim [s]
-  (when s (s/trim s)))
-
-(defn parse-metadata [meta]
-  (loop [meta meta ctime nil mtime nil]
-    (if-let [m (first meta)]
-      ;; Hive, oh Hive...
-      (let [name  (trim (:col_name m))
-            type  (trim (:data_type m))
-            comm  (trim (:comment m))
-            ctime (if (and (= name "CreateTime:") type)
-                    (parse-timestamp type) ; <- not a bug!
-                    ctime)
-            mtime (if (and (= type "transient_lastDdlTime") comm) ; <- not a bug!
-                    (* 1000 (Long/parseLong comm)) ; <- not a bug!
-                    mtime)]
-        (recur (rest meta) ctime mtime))
-      [ctime mtime])))
+(defn table-mod-time [path]
+  (let [{:keys [datasource database table]} path
+        props   (query datasource
+                       (format "show tblproperties `%s.%s`" database table))
+        [_ val] (->> props
+                     (drop-while (fn [[prop _]] (not= prop "transient_lastDdlTime")))
+                     (first))]
+    (* 1000 (Long/parseLong val))))
 
 (defn table-info [table-path]
-  (when (table-exists? table-path)
-    (let [{:keys [datasource database table normalized]} (hive-path table-path)
-          ;; note: it has to be "describe formatted" because
-          ;; "describe extended" omits the "transient_lastDdlTime" field.
-          sql (format "describe formatted %s.%s" database table)
-          meta (jdbc/query datasource [sql])
-          [ctime mtime] (parse-metadata meta)]
-      {:mod-time (or mtime ctime)
-       :path normalized
+  (let [path (hive-path table-path)]
+    (when (table-exists? path)
+      {:mod-time (table-mod-time path)
+       :path (:normalized path)
        :directory false})))
 
 (defn hive []
   (reify FileSystem
     (exists? [_ path]
-      (table-exists? path))
+      (table-exists? (hive-path path)))
     (directory? [_ path]
       false)
     (mod-time [_ path]
@@ -106,7 +87,7 @@
     (file-info-seq [_ path]
       [(table-info path)])
     (data-in? [_ path]
-      (table-exists? path))
+      (table-exists? (hive-path path)))
     (normalized-filename [_ path]
       (:normalized (hive-path path)))
     (rm [_ _]
